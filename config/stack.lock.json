@@ -1,0 +1,28 @@
+{
+  "verified_on": "2026-10-09",
+  "platform": "Ubuntu 24.04",
+  "ros_distro": "jazzy",
+  "ros_rmw": "rmw_cyclonedds_cpp",
+  "simulator": "Gazebo Harmonic",
+  "ros_apt_source_version": "1.3.0",
+  "px4": {
+    "url": "https://github.com/PX4/PX4-Autopilot.git",
+    "ref": "v1.17.0",
+    "commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4"
+  },
+  "px4_msgs": {
+    "url": "https://github.com/PX4/px4_msgs.git",
+    "ref": "release/1.17",
+    "commit": "86d8239e962f6939e05c3737784f60c02fa884db"
+  },
+  "agent": {
+    "url": "https://github.com/eProsima/Micro-XRCE-DDS-Agent.git",
+    "ref": "v2.4.3",
+    "commit": "73622810d984349b80bbac0ef55fc0b694d62222"
+  },
+  "agent_logger": {
+    "url": "https://github.com/gabime/spdlog.git",
+    "ref": "v1.9.2",
+    "commit": "eb3220622e73a4889eee355ffa37972b3cac3df5"
+  }
+}

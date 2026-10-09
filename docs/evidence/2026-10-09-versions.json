@@ -1,0 +1,21 @@
+{
+  "ubuntu": "Ubuntu 24.04.4 LTS",
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "python": "Python 3.12.3",
+  "gazebo": "8.15.0",
+  "px4_commit": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+  "px4_msgs_commit": "86d8239e962f6939e05c3737784f60c02fa884db",
+  "agent_commit": "73622810d984349b80bbac0ef55fc0b694d62222",
+  "agent_logger_commit": "eb3220622e73a4889eee355ffa37972b3cac3df5",
+  "system_packages": "libgz-sim8:amd64\t8.15.0-1~noble\nlibopencv-dev\t4.6.0+dfsg-13.1ubuntu1\nros-jazzy-cyclonedds\t0.10.5-1noble.20260225.142613\nros-jazzy-fastcdr\t2.2.8-1noble.20260901.205404\nros-jazzy-fastrtps\t2.14.7-1noble.20260911.035053\nros-jazzy-rclpy\t7.1.12-1noble.20260912.162354\nros-jazzy-rmw-cyclonedds-cpp\t2.2.4-1noble.20260911.095700\nros-jazzy-rmw-fastrtps-cpp\t8.4.4-1noble.20260911.100940\nros-jazzy-ros-base\t0.11.0-1noble.20261006.035407\nros2-apt-source\t1.3.0~noble",
+  "settings": {
+    "headless": true,
+    "ros_domain_id": 0,
+    "xrce_udp_port": 8888,
+    "model": "x500",
+    "stale_timeout_s": 3.0,
+    "dds_builtin_transports": "DEFAULT",
+    "ros_rmw": "rmw_cyclonedds_cpp",
+    "monitor_first": true
+  }
+}

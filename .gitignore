@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+build/
+install/
+log/
+.runtime/
+ros2_ws/src/px4_msgs/
+*.ulg
+*.bag
+*.db3
+*.mcap
