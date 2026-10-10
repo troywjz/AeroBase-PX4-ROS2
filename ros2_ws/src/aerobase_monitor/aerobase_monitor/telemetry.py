@@ -1,5 +1,6 @@
 """Telemetry freshness and formatting, independent of ROS and PX4 bindings."""
 from dataclasses import dataclass
+import copy
 import math
 import re
 
@@ -21,6 +22,14 @@ def enum_label(message_type: type, prefix: str, value: int) -> str:
     return f"unknown({value})"
 
 
+def enum_name(message_type: type, prefix: str, value: int) -> str:
+    """Return the normalized enum name without embedding its numeric value."""
+    for name in dir(message_type):
+        if name.startswith(prefix) and not name.endswith("_MAX") and getattr(message_type, name) == value:
+            return name[len(prefix):].lower()
+    return "unknown"
+
+
 def number(value: float, precision: int = 2) -> str:
     return f"{value:.{precision}f}" if math.isfinite(value) else "unknown"
 
@@ -34,6 +43,7 @@ class Sample:
     fields: dict[str, str]
     received_at: float
     source_timestamp: int
+    data: dict | None = None
 
 
 class TelemetryState:
@@ -52,11 +62,18 @@ class TelemetryState:
         self.stale_timeout_s = stale_timeout_s
         self.samples: dict[str, Sample] = {}
 
-    def update(self, stream: str, fields: dict[str, str], source_timestamp: int, now: float) -> None:
+    def update(
+        self,
+        stream: str,
+        fields: dict[str, str],
+        source_timestamp: int,
+        now: float,
+        data: dict | None = None,
+    ) -> None:
         previous = self.samples.get(stream)
         if source_timestamp <= 0 or (previous and previous.source_timestamp == source_timestamp):
             return
-        self.samples[stream] = Sample(dict(fields), now, source_timestamp)
+        self.samples[stream] = Sample(dict(fields), now, source_timestamp, copy.deepcopy(data))
 
     def fresh(self, stream: str, now: float) -> bool:
         sample = self.samples.get(stream)
@@ -92,3 +109,43 @@ class TelemetryState:
         if global_position:
             rows.append(f"Global position: {self.field('global_position', 'global_position', now)}")
         return "\n".join(rows)
+
+    def snapshot(
+        self,
+        now: float,
+        vehicle_namespace: str = "",
+        battery: bool = True,
+        global_position: bool = True,
+    ) -> dict:
+        """Build schema v1 with uniform freshness and stale-value masking."""
+        streams = {}
+        names = [*self.REQUIRED]
+        if battery:
+            names.append("battery")
+        if global_position:
+            names.append("global_position")
+        for name in names:
+            sample = self.samples.get(name)
+            if sample is None:
+                streams[name] = {
+                    "state": "missing",
+                    "age_s": None,
+                    "source_timestamp_us": None,
+                    "data": None,
+                }
+                continue
+            age = max(0.0, now - sample.received_at)
+            fresh = self.fresh(name, now)
+            streams[name] = {
+                "state": "fresh" if fresh else "stale",
+                "age_s": age,
+                "source_timestamp_us": sample.source_timestamp,
+                "data": copy.deepcopy(sample.data) if fresh else None,
+            }
+        return {
+            "schema_version": 1,
+            "backend": "px4_dds",
+            "vehicle_namespace": vehicle_namespace,
+            "connection": self.connection(now),
+            "streams": streams,
+        }
