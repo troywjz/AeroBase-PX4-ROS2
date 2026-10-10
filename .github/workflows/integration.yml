@@ -1,0 +1,53 @@
+name: Native Ubuntu SITL integration
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-sitl-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  sitl:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      AEROBASE_RUNTIME: ${{ runner.temp }}/aerobase-runtime
+      AEROBASE_BUILD_JOBS: '4'
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      LIBGL_ALWAYS_SOFTWARE: '1'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install system dependencies
+        run: bash scripts/install_ubuntu_deps.sh
+      - name: Build locked sources as an ordinary user
+        run: bash scripts/build_runtime.sh
+      - name: Check environment and real message adapters
+        shell: bash
+        run: |
+          source /opt/ros/jazzy/setup.bash
+          source "$AEROBASE_RUNTIME/ros2_ws/install/setup.bash"
+          bash scripts/doctor.sh --strict --json > "$RUNNER_TEMP/doctor.json"
+          bash scripts/check_local.sh
+      - name: Observe text telemetry and Agent recovery
+        run: bash scripts/verify_sitl.sh --output "$RUNNER_TEMP/evidence/text"
+      - name: Observe JSON telemetry with subscriber first
+        run: bash scripts/verify_sitl.sh --monitor-first --monitor-output json --output "$RUNNER_TEMP/evidence/json"
+      - name: Create public evidence summaries
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/public-evidence"
+          for format in text json; do
+            if [[ -f "$RUNNER_TEMP/evidence/$format/result.json" ]]; then
+              python3 scripts/summarize_evidence.py "$RUNNER_TEMP/evidence/$format/result.json" --output "$RUNNER_TEMP/public-evidence/$format.json"
+            fi
+          done
+      - name: Upload only sanitized summaries
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: native-sitl-summary
+          path: ${{ runner.temp }}/public-evidence/*.json
+          if-no-files-found: ignore
+          retention-days: 14
