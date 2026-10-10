@@ -4,7 +4,7 @@
 
 ## 环境基线
 
-推荐 Ubuntu 24.04、ROS 2 Jazzy、Gazebo Harmonic、PX4 v1.17.0 和 Micro XRCE-DDS Agent v2.4.3。已记录的完整集成验证运行于 WSL2 Ubuntu 24.04.4；该结果不代表所有原生 Ubuntu 或其他机器均已验收。不要混用 Ubuntu 22.04 / Humble / Agent v2.4.2 教程命令。
+v0.1.0 支持 Ubuntu 24.04 amd64、ROS 2 Jazzy、Gazebo Harmonic、PX4 v1.17.0 和 Micro XRCE-DDS Agent v2.4.3。全新 GitHub 托管 Ubuntu 24.04.5 runner 与 WSL2 Ubuntu 24.04.4 的 headless 链路均已通过[发布验收](evidence/2026-10-10-v0.1.md)。ARM 与 GUI 尚未验收。不要混用 Ubuntu 22.04 / Humble / Agent v2.4.2 教程命令。
 
 版本依据：[PX4 ROS 2 指南](https://docs.px4.io/main/en/ros2/user_guide)、[PX4 XRCE Agent 版本表](https://docs.px4.io/main/en/middleware/uxrce_dds#version-selection)、[PX4 v1.17.0](https://github.com/PX4/PX4-Autopilot/releases/tag/v1.17.0)、[该版本 Ubuntu 安装脚本](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/Tools/setup/ubuntu.sh)。
 
@@ -51,6 +51,16 @@ AEROBASE_BUILD_JOBS=2 bash scripts/build_runtime.sh
 
 PX4 Python 依赖位于独立的 `px4-venv`；ROS 2 使用 Ubuntu 系统 Python。运行 ROS 2 命令时不要激活 PX4 虚拟环境。
 
+构建后，在准备运行 ROS 2 命令的同一个终端先加载 Jazzy 和工作区，再运行严格环境诊断：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/aerobase-runtime/ros2_ws/install/setup.bash
+bash scripts/doctor.sh --strict
+```
+
+若使用 `AEROBASE_RUNTIME` 指定其他运行目录，应 source 该目录中的 `ros2_ws/install/setup.bash`。JSON 诊断可用 `bash scripts/doctor.sh --json`；完整行为和状态含义见[运行环境诊断](runtime-diagnostics.md)。
+
 ## 启动仿真和监测节点
 
 分别在三个 Ubuntu 终端中进入仓库目录，并按以下顺序启动：
@@ -69,6 +79,14 @@ HEADLESS=1 bash scripts/run_sitl.sh
 # 终端 C：ROS 2 遥测监测节点
 bash scripts/run_monitor.sh
 ```
+
+默认输出为兼容的 text。需要机器读取时，启动参数可选择 schema v1 JSON：
+
+```bash
+bash scripts/run_monitor.sh --ros-args -p output_format:=json
+```
+
+JSON 每行一个报告，字段、单位、缺失与 stale 语义见[只读遥测 JSON 契约](telemetry-contract.md)。
 
 `HEADLESS=1` 关闭 Gazebo 图形界面，仿真仍运行。需要图形界面时去掉该变量；WSL 环境还需 WSLg 图形支持。界面显示不属于当前已记录的视觉验收范围。
 

@@ -1,0 +1,46 @@
+{
+  "checks": {
+    "agent_restart_recovers": true,
+    "agent_stop_marks_stale": true,
+    "battery_received": true,
+    "gazebo_x500_model": true,
+    "global_position_received": true,
+    "no_px4_command_interfaces": true,
+    "remained_disarmed": true,
+    "required_streams_connected": true
+  },
+  "finished_utc": "2026-10-10T14:34:57.761615Z",
+  "passed": true,
+  "settings": {
+    "headless": true,
+    "model": "x500",
+    "monitor_first": false,
+    "monitor_output": "text",
+    "ros_rmw": "rmw_cyclonedds_cpp",
+    "stale_timeout_s": 3.0
+  },
+  "software": {
+    "gazebo": "8.15.0",
+    "python": "Python 3.12.3",
+    "ubuntu": "Ubuntu 24.04.4 LTS"
+  },
+  "software_packages": {
+    "libgz-sim8": "8.15.0-1~noble",
+    "libopencv-dev": "4.6.0+dfsg-13.1ubuntu1",
+    "ros-jazzy-cyclonedds": "0.10.5-1noble.20260225.142613",
+    "ros-jazzy-fastcdr": "2.2.8-1noble.20260901.205404",
+    "ros-jazzy-fastrtps": "2.14.7-1noble.20260911.035053",
+    "ros-jazzy-rclpy": "7.1.12-1noble.20260912.162354",
+    "ros-jazzy-rmw-cyclonedds-cpp": "2.2.4-1noble.20260911.095700",
+    "ros-jazzy-rmw-fastrtps-cpp": "8.4.4-1noble.20260911.100940",
+    "ros-jazzy-ros-base": "0.11.0-1noble.20261006.035407",
+    "ros2-apt-source": "1.3.0~noble"
+  },
+  "source_commits": {
+    "agent_logger": "eb3220622e73a4889eee355ffa37972b3cac3df5",
+    "micro_xrce_dds_agent": "73622810d984349b80bbac0ef55fc0b694d62222",
+    "px4": "d6f12ad1c4f70ad3230afd7d86e971421e02fef4",
+    "px4_msgs": "86d8239e962f6939e05c3737784f60c02fa884db"
+  },
+  "started_utc": "2026-10-10T14:34:16.278714Z"
+}

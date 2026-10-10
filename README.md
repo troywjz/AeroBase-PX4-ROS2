@@ -8,7 +8,7 @@ GitHub：[troywjz/AeroBase-PX4-ROS2](https://github.com/troywjz/AeroBase-PX4-ROS
 
 ## 快速部署
 
-部署脚本以 Ubuntu 24.04 为目标。当前记录的验证环境是运行于 WSL2 的 Ubuntu 24.04；这不代表已在原生 Ubuntu 安装或所有硬件配置上完成验证。以下命令在 Ubuntu Bash 中运行：
+v0.1.0 面向 Ubuntu 24.04 amd64。全新 GitHub 托管 Ubuntu 24.04 runner 与 WSL2 Ubuntu 24.04 的 headless 集成验收均已通过，具体条件见[发布验收记录](docs/evidence/2026-10-10-v0.1.md)。以下命令在 Ubuntu Bash 中运行：
 
 ```bash
 git clone https://github.com/troywjz/AeroBase-PX4-ROS2.git ~/AeroBase-PX4-ROS2
@@ -32,18 +32,28 @@ bash scripts/run_monitor.sh
 
 参数覆盖和运行目录设置见[运行配置](#运行配置)。完整验收流程见[验证文档](docs/validation.md)；安装与排错步骤以脚本和验证记录为准。
 
+安装、构建后，可在当前终端加载 ROS 环境并检查运行目录：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/aerobase-runtime/ros2_ws/install/setup.bash
+bash scripts/doctor.sh --strict
+```
+
+`--strict` 会将警告也视为未就绪；使用 `--json` 可输出机器可读诊断。机器遥测可通过 `bash scripts/run_monitor.sh --ros-args -p output_format:=json` 启用，默认仍为 text。详细字段见[遥测 JSON 契约](docs/telemetry-contract.md)，环境检查见[诊断指南](docs/runtime-diagnostics.md)。
+
 ## 软件版本基线
 
 | 组件 | 基线 |
 | --- | --- |
-| 操作系统目标 | Ubuntu 24.04；当前验证记录来自 WSL2 |
+| 操作系统目标 | Ubuntu 24.04 amd64；原生 runner 与 WSL2 已验证 |
 | 飞控栈 | PX4 v1.17.0 |
 | ROS 2 | Jazzy、`rclpy`、Cyclone DDS RMW (`rmw_cyclonedds_cpp`) |
 | 模拟器 | Gazebo Harmonic，X500 模型 |
 | XRCE Agent | Micro XRCE-DDS Agent v2.4.3 |
 | PX4 消息定义 | `px4_msgs` `release/1.17` 固定提交 |
 
-源码版本记录在 [stack.lock.json](config/stack.lock.json)。系统软件包来自 Ubuntu、ROS 和 Gazebo 软件仓库，实际安装版本见[验证证据](docs/evidence/2026-10-09-phase1.md)。源码修订已固定；发行版软件包来自对应仓库，可能随仓库更新。
+源码版本记录在 [stack.lock.json](config/stack.lock.json)。系统软件包来自 Ubuntu、ROS 和 Gazebo 软件仓库，实际安装版本见[发布验证证据](docs/evidence/2026-10-10-v0.1.md)。源码修订已固定；发行版软件包来自对应仓库，可能随仓库更新。
 
 ## 当前功能
 
@@ -67,6 +77,7 @@ ROS 节点参数在启动后只读：
 | `stale_timeout_s` | `3.0` | 遥测新鲜度窗口 |
 | `enable_battery` | `true` | 是否订阅可选电池遥测 |
 | `enable_global_position` | `true` | 是否订阅可选全局位置遥测 |
+| `output_format` | `text` | 文本报告或 schema v1 JSON 行 |
 
 参数覆盖示例：
 
@@ -76,7 +87,7 @@ bash scripts/run_monitor.sh --ros-args -p stale_timeout_s:=5.0
 
 `vehicle_namespace` 必须与 PX4 发布的 Topic 前缀一致。XRCE 端口与 DDS domain 也需在对应进程中保持一致。
 
-脚本支持环境变量：`AEROBASE_RUNTIME` 指定运行目录，默认 `~/aerobase-runtime`；`AEROBASE_BUILD_JOBS` 指定并行构建任务数，默认 `4`；`AEROBASE_XRCE_PORT` 指定 XRCE UDP 端口，默认 `8888`。`ROS_DOMAIN_ID` 默认 `0`。监测节点默认使用 Cyclone DDS，可通过 `RMW_IMPLEMENTATION` 选择已安装的其他 ROS RMW。
+脚本支持环境变量：`AEROBASE_RUNTIME` 指定运行目录，默认 `~/aerobase-runtime`；`AEROBASE_BUILD_JOBS` 指定并行构建任务数，默认 `4`；`AEROBASE_XRCE_PORT` 指定 XRCE UDP 端口，默认 `8888`。`ROS_DOMAIN_ID` 默认 `0`。监测节点默认使用 Cyclone DDS；其他 ROS RMW 可通过 `RMW_IMPLEMENTATION` 选择，但需要独立集成验证。网络失败时，可用 `AEROBASE_GIT_PROXY` 为源码获取的单次 Git 重试指定代理。
 
 ## 验证集成
 
@@ -86,10 +97,12 @@ bash scripts/run_monitor.sh --ros-args -p stale_timeout_s:=5.0
 bash scripts/verify_sitl.sh --monitor-first --output "$PWD/.runtime/evidence/run"
 ```
 
-脚本启动 PX4 SITL、Gazebo X500、XRCE Agent 和监测节点，检查必选及可选遥测、过期与恢复行为、只读边界，随后关闭本次启动的进程。原始日志放在 Git 忽略的 `.runtime/evidence/` 目录。公开的[验证记录](docs/evidence/2026-10-09-phase1.md)包含两次独立 WSL2 运行、软件版本、观测结果和范围限制。单元测试与 SITL 证据各自有适用范围，均不能证明实体飞行表现或硬件验收。
+脚本启动 PX4 SITL、Gazebo X500、XRCE Agent 和监测节点，检查必选及可选遥测、过期与恢复行为、只读边界，随后关闭本次启动的进程。添加 `--monitor-output json` 可验证机器输出。原始日志放在 Git 忽略的 `.runtime/evidence/` 目录；公开的[发布验收记录](docs/evidence/2026-10-10-v0.1.md)包含原生 runner、WSL2、软件版本和范围限制。单元测试与 SITL 证据各自有适用范围，均不能证明实体飞行表现或硬件验收。
 
 ## 架构与路线图
 
 [系统架构与接口](docs/architecture.md)说明模块职责、DDS 与 MAVLink 链路、消息与 QoS 契约、坐标系、时间处理和扩展接口。[工程能力与路线图](docs/roadmap.md)记录当前实现、证据和待验证项。
+
+发布范围和完成门见[v0.1.0 发布验收标准](docs/release-v0.1.md)，当前变更记录见[CHANGELOG](CHANGELOG.md)；验证证据的公开摘要命令见[验证方法](docs/validation.md)。贡献流程见[贡献指南](CONTRIBUTING.md)。
 
 本仓库代码采用 [MIT License](LICENSE)。PX4、ROS 2、Gazebo、Micro XRCE-DDS Agent 及其他第三方组件保留各自许可证；使用时应查阅对应上游项目和软件包的适用条款。
