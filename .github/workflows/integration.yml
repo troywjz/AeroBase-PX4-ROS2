@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      AEROBASE_RUNTIME: ${{ runner.temp }}/aerobase-runtime
+      AEROBASE_RUNTIME: /tmp/aerobase-runtime
       AEROBASE_BUILD_JOBS: '4'
       RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
       LIBGL_ALWAYS_SOFTWARE: '1'
