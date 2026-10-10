@@ -7,6 +7,10 @@ if (( EUID == 0 )); then
     echo 'Build as an ordinary user, after installing system dependencies.' >&2
     exit 1
 fi
+for required_command in git python3 cmake make colcon; do
+    command -v "$required_command" >/dev/null || { echo "Missing required command: $required_command. Install documented system dependencies first." >&2; exit 1; }
+done
+[[ -r /opt/ros/jazzy/setup.bash ]] || { echo 'ROS 2 Jazzy is missing; install documented system dependencies first.' >&2; exit 1; }
 python3 "$repo_dir/scripts/fetch_sources.py" --runtime "$runtime"
 python3 "$repo_dir/scripts/check_interfaces.py" --runtime "$runtime"
 python3 -m venv "$runtime/px4-venv"
