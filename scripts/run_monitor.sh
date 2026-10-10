@@ -8,4 +8,5 @@ source "$runtime/ros2_ws/install/setup.bash"
 command -v ros2 >/dev/null || { echo 'ros2 is unavailable after sourcing Jazzy; check the ROS installation.' >&2; exit 1; }
 export ROS_DOMAIN_ID=${ROS_DOMAIN_ID:-0}
 export RMW_IMPLEMENTATION=${RMW_IMPLEMENTATION:-rmw_cyclonedds_cpp}
-exec ros2 run aerobase_monitor vehicle_monitor "$@"
+# Launch the installed module directly so CLI exit notices cannot pollute JSON stdout.
+exec python3 -m aerobase_monitor.vehicle_monitor "$@"

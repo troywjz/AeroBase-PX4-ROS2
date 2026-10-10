@@ -22,7 +22,7 @@ def stop(process: subprocess.Popen) -> None:
     try:
         os.killpg(process.pid, signal.SIGINT)
     except ProcessLookupError:
-        return
+        pass
     try:
         process.wait(timeout=8)
     except subprocess.TimeoutExpired:
@@ -33,8 +33,50 @@ def stop(process: subprocess.Popen) -> None:
     except ProcessLookupError:
         pass
     process.wait()
-    if process.stdin is not None:
+    if process.stdin is not None and not process.stdin.closed:
         process.stdin.close()
+
+
+def json_reports(content: str) -> list[dict]:
+    """Reject non-JSON stdout and nonstandard numeric constants."""
+    def reject_constant(value):
+        raise ValueError(f"Nonstandard JSON constant: {value}")
+    reports = []
+    for line in content.splitlines():
+        if not line.strip():
+            continue
+        report = json.loads(line, parse_constant=reject_constant)
+        if not isinstance(report, dict) or report.get("schema_version") != 1:
+            raise ValueError("Expected a schema v1 JSON report")
+        streams = report.get("streams", {})
+        if not isinstance(streams, dict):
+            raise ValueError("Expected a stream object")
+        for name in ("status", "odometry"):
+            if name not in streams:
+                raise ValueError("Required stream missing from JSON report")
+        for stream in streams.values():
+            if not isinstance(stream, dict) or stream.get("state") not in ("missing", "fresh", "stale"):
+                raise ValueError("Invalid stream state")
+            if stream["state"] == "fresh" and not isinstance(stream.get("data"), dict):
+                raise ValueError("Fresh stream has no numeric payload")
+            if stream["state"] != "fresh" and stream["data"] is not None:
+                raise ValueError("Non-fresh stream exposed cached data")
+        required_states = [streams[name]["state"] for name in ("status", "odometry")]
+        fresh_count = required_states.count("fresh")
+        expected = "connected" if fresh_count == 2 else "degraded" if fresh_count == 1 else "waiting" if required_states == ["missing", "missing"] else "disconnected"
+        if report.get("connection") != expected:
+            raise ValueError("Connection contradicts required stream freshness")
+        status = streams["status"].get("data")
+        if status is not None and type(status.get("arming_state")) is not int:
+            raise ValueError("Fresh status lacks an integer arming state")
+        reports.append(report)
+    return reports
+
+
+def observed_connection(content: str, state: str, output_format: str) -> bool:
+    if output_format == "text":
+        return f"Vehicle: {state}" in content
+    return any(report["connection"] == state for report in json_reports(content))
 
 
 def main() -> None:
@@ -42,6 +84,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--runtime", type=Path, default=Path.home() / "aerobase-runtime")
     parser.add_argument("--monitor-first", action="store_true", help="Exercise a subscriber that starts before PX4")
+    parser.add_argument("--monitor-output", choices=("text", "json"), default="text")
     args = parser.parse_args()
     if args.output.exists():
         raise SystemExit("Choose a new evidence directory; previous logs will not be overwritten")
@@ -65,21 +108,27 @@ def main() -> None:
         files.append(handle)
         # Keep stdin open but never send commands: PX4's shell otherwise spins
         # on inherited EOF when a check is launched from a noninteractive host.
-        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=handle, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+        error_handle = subprocess.STDOUT
+        if script == "run_monitor.sh":
+            error_handle = (args.output / "monitor-stderr.log").open("w")
+            files.append(error_handle)
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=handle, stderr=error_handle, env=env, start_new_session=True)
         processes.append(process)
         results["commands"][logfile] = command
         return process
 
-    def wait_for(text: str, offset: int = 0, timeout: int = 90) -> str:
+    def wait_for(state: str, offset: int = 0, timeout: int = 90) -> str:
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             content = (args.output / "monitor.log").read_text(errors="replace")[offset:]
-            if text in content:
+            # Read only complete records while the monitor is writing.
+            content = content[:content.rfind("\n") + 1]
+            if observed_connection(content, state, args.monitor_output):
                 return content
             if monitor.poll() is not None or sitl.poll() is not None:
                 raise RuntimeError("Monitor or SITL exited; inspect logs")
             time.sleep(0.2)
-        raise TimeoutError(f"Did not observe {text!r}; inspect logs")
+        raise TimeoutError(f"Did not observe {state!r}; inspect logs")
 
     def capture(name: str, command: list[str]) -> str:
         content = output(command)
@@ -89,8 +138,21 @@ def main() -> None:
     try:
         capture("interfaces.log", ["python3", str(repo / "scripts/check_interfaces.py"), "--runtime", str(args.runtime)])
         agent = launch("run_agent.sh", "agent.log")
+        monitor_args = ["--ros-args", "-p", f"output_format:={args.monitor_output}"]
         if args.monitor_first:
-            monitor = launch("run_monitor.sh", "monitor.log")
+            monitor = launch("run_monitor.sh", "monitor.log", monitor_args)
+            deadline = time.monotonic() + 30
+            expected_topics = ("vehicle_status", "vehicle_odometry", "battery_status", "vehicle_global_position")
+            while True:
+                startup = (args.output / "monitor-stderr.log").read_text(errors="replace")
+                if all(f"Listening: /fmu/out/{topic}" in startup for topic in expected_topics):
+                    break
+                if monitor.poll() is not None or agent.poll() is not None:
+                    raise RuntimeError("Monitor or Agent exited before subscriber readiness")
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Monitor subscriptions did not become ready before PX4 startup")
+                time.sleep(0.2)
+            results["checks"]["subscriber_started_first"] = True
         sitl = launch("run_sitl.sh", "sitl.log")
         # The supported startup sequence brings the DDS writers up before
         # creating the ROS subscriber. Observe readiness rather than sleeping.
@@ -106,8 +168,8 @@ def main() -> None:
                 raise TimeoutError("PX4 DDS writers did not become ready")
             time.sleep(0.2)
         if not args.monitor_first:
-            monitor = launch("run_monitor.sh", "monitor.log")
-        wait_for("Vehicle: connected")
+            monitor = launch("run_monitor.sh", "monitor.log", monitor_args)
+        wait_for("connected")
         results["checks"]["required_streams_connected"] = True
         print("PASS: real PX4 status and odometry reached vehicle_monitor", flush=True)
         time.sleep(5)
@@ -125,24 +187,35 @@ def main() -> None:
         results["checks"]["no_px4_command_interfaces"] = True
         # Ensure these specific streams actually yielded data, not only discovery.
         report = (args.output / "monitor.log").read_text()
-        results["checks"]["battery_received"] = any(line.startswith("Battery:") and "unknown (no data)" not in line and "stale" not in line for line in report.splitlines())
-        results["checks"]["global_position_received"] = any(line.startswith("Global position:") and "unknown (no data)" not in line and "stale" not in line for line in report.splitlines())
+        if args.monitor_output == "json":
+            reports = json_reports(report)
+            for stream, key in (("battery", "battery_received"), ("global_position", "global_position_received")):
+                results["checks"][key] = any(item["streams"][stream]["state"] == "fresh" and item["streams"][stream]["data"] is not None for item in reports)
+            results["checks"]["strict_json_stdout"] = bool(reports)
+        else:
+            results["checks"]["battery_received"] = any(line.startswith("Battery:") and "unknown (no data)" not in line and "stale" not in line for line in report.splitlines())
+            results["checks"]["global_position_received"] = any(line.startswith("Global position:") and "unknown (no data)" not in line and "stale" not in line for line in report.splitlines())
         if not results["checks"]["battery_received"] or not results["checks"]["global_position_received"]:
             raise RuntimeError("Optional telemetry did not arrive in this baseline")
-        if "Arming: armed(2)" in report:
+        def armed(content):
+            if args.monitor_output == "text":
+                return "Arming: armed(2)" in content
+            return any(item["streams"]["status"]["data"] is not None and item["streams"]["status"]["data"]["arming_state"] == 2 for item in json_reports(content))
+        if armed(report):
             raise RuntimeError("Unexpected armed SITL state")
         offset = len(report)
         stop(agent)
-        disconnected = wait_for("Vehicle: disconnected", offset, timeout=12)
-        if "Arming: stale" not in disconnected or "Position: stale" not in disconnected:
+        disconnected = wait_for("disconnected", offset, timeout=12)
+        masked = (any(item["connection"] == "disconnected" and all(item["streams"][key]["state"] == "stale" and item["streams"][key]["data"] is None for key in ("status", "odometry")) for item in json_reports(disconnected)) if args.monitor_output == "json" else "Arming: stale" in disconnected and "Position: stale" in disconnected)
+        if not masked:
             raise RuntimeError("Disconnected report did not mask stale data")
         results["checks"]["agent_stop_marks_stale"] = True
         print("PASS: agent stop caused disconnected/stale telemetry", flush=True)
         offset = len((args.output / "monitor.log").read_text())
         agent = launch("run_agent.sh", "agent-restart.log")
-        wait_for("Vehicle: connected", offset, timeout=60)
+        wait_for("connected", offset, timeout=60)
         results["checks"]["agent_restart_recovers"] = True
-        if "Arming: armed(2)" in (args.output / "monitor.log").read_text():
+        if armed((args.output / "monitor.log").read_text()):
             raise RuntimeError("Unexpected armed SITL state during recovery")
         results["checks"]["remained_disarmed"] = True
         print("PASS: agent restart restored live telemetry", flush=True)
@@ -156,12 +229,12 @@ def main() -> None:
             "agent_commit": output(["git", "-C", str(args.runtime / "Micro-XRCE-DDS-Agent"), "rev-parse", "HEAD"]).strip(),
             "agent_logger_commit": output(["git", "-C", str(args.runtime / "spdlog"), "rev-parse", "HEAD"]).strip(),
             "system_packages": output(["dpkg-query", "-W", "ros-jazzy-ros-base", "ros-jazzy-rclpy", "ros-jazzy-rmw-fastrtps-cpp", "ros-jazzy-rmw-cyclonedds-cpp", "ros-jazzy-cyclonedds", "ros-jazzy-fastrtps", "ros-jazzy-fastcdr", "libgz-sim8", "libopencv-dev", "ros2-apt-source"]).strip(),
-            "settings": {"headless": True, "ros_domain_id": 0, "xrce_udp_port": 8888, "model": "x500", "stale_timeout_s": 3.0, "dds_builtin_transports": env.get("FASTDDS_BUILTIN_TRANSPORTS", "DEFAULT"), "ros_rmw": env["RMW_IMPLEMENTATION"], "monitor_first": args.monitor_first},
+            "settings": {"headless": True, "ros_domain_id": 0, "xrce_udp_port": 8888, "model": "x500", "stale_timeout_s": 3.0, "dds_builtin_transports": env.get("FASTDDS_BUILTIN_TRANSPORTS", "DEFAULT"), "ros_rmw": env["RMW_IMPLEMENTATION"], "monitor_first": args.monitor_first, "monitor_output": args.monitor_output},
         }
         (args.output / "versions.json").write_text(json.dumps(versions, indent=2) + "\n")
         capture("px4-python-requirements.txt", [str(args.runtime / "px4-venv/bin/python"), "-m", "pip", "freeze"])
         results["passed"] = True
-    except Exception as exc:
+    except (Exception, KeyboardInterrupt) as exc:
         results["passed"] = False
         results["error"] = f"{type(exc).__name__}: {exc}"
         raise
