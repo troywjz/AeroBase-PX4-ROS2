@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a scoped, verifiable improvement to AeroBase.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Who needs this, and what task should it support?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behavior and its relationship to the current read-only baseline.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Verifiable acceptance criteria
+      description: List observable outcomes and the evidence needed to confirm them.
+    validations:
+      required: true
