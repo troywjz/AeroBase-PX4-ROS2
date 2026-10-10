@@ -49,12 +49,26 @@ def json_reports(content: str) -> list[dict]:
         if not isinstance(report, dict) or report.get("schema_version") != 1:
             raise ValueError("Expected a schema v1 JSON report")
         streams = report.get("streams", {})
+        if not isinstance(streams, dict):
+            raise ValueError("Expected a stream object")
         for name in ("status", "odometry"):
             if name not in streams:
                 raise ValueError("Required stream missing from JSON report")
         for stream in streams.values():
+            if not isinstance(stream, dict) or stream.get("state") not in ("missing", "fresh", "stale"):
+                raise ValueError("Invalid stream state")
+            if stream["state"] == "fresh" and not isinstance(stream.get("data"), dict):
+                raise ValueError("Fresh stream has no numeric payload")
             if stream["state"] != "fresh" and stream["data"] is not None:
                 raise ValueError("Non-fresh stream exposed cached data")
+        required_states = [streams[name]["state"] for name in ("status", "odometry")]
+        fresh_count = required_states.count("fresh")
+        expected = "connected" if fresh_count == 2 else "degraded" if fresh_count == 1 else "waiting" if required_states == ["missing", "missing"] else "disconnected"
+        if report.get("connection") != expected:
+            raise ValueError("Connection contradicts required stream freshness")
+        status = streams["status"].get("data")
+        if status is not None and type(status.get("arming_state")) is not int:
+            raise ValueError("Fresh status lacks an integer arming state")
         reports.append(report)
     return reports
 
@@ -127,6 +141,18 @@ def main() -> None:
         monitor_args = ["--ros-args", "-p", f"output_format:={args.monitor_output}"]
         if args.monitor_first:
             monitor = launch("run_monitor.sh", "monitor.log", monitor_args)
+            deadline = time.monotonic() + 30
+            expected_topics = ("vehicle_status", "vehicle_odometry", "battery_status", "vehicle_global_position")
+            while True:
+                startup = (args.output / "monitor-stderr.log").read_text(errors="replace")
+                if all(f"Listening: /fmu/out/{topic}" in startup for topic in expected_topics):
+                    break
+                if monitor.poll() is not None or agent.poll() is not None:
+                    raise RuntimeError("Monitor or Agent exited before subscriber readiness")
+                if time.monotonic() >= deadline:
+                    raise TimeoutError("Monitor subscriptions did not become ready before PX4 startup")
+                time.sleep(0.2)
+            results["checks"]["subscriber_started_first"] = True
         sitl = launch("run_sitl.sh", "sitl.log")
         # The supported startup sequence brings the DDS writers up before
         # creating the ROS subscriber. Observe readiness rather than sleeping.

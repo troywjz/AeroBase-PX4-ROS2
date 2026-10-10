@@ -7,7 +7,7 @@ from scripts.verify_sitl import json_reports, observed_connection
 
 
 def report(state="fresh", data=None):
-    return {"schema_version": 1, "connection": "connected", "streams": {
+    return {"schema_version": 1, "connection": "connected" if state == "fresh" else "degraded", "streams": {
         "status": {"state": state, "data": data},
         "odometry": {"state": "fresh", "data": {"position_m": [0, 0, 0]}},
     }}
@@ -31,3 +31,14 @@ def test_stale_payload_is_masked_and_required_streams_exist():
     del invalid["streams"]["odometry"]
     with pytest.raises(ValueError, match="Required stream"):
         json_reports(json.dumps(invalid))
+
+
+def test_connection_must_match_actual_required_streams():
+    invalid = report("missing")
+    invalid["connection"] = "connected"
+    with pytest.raises(ValueError, match="contradicts"):
+        json_reports(json.dumps(invalid))
+    with pytest.raises(ValueError, match="no numeric payload"):
+        json_reports(json.dumps(report()))
+    with pytest.raises(ValueError, match="arming state"):
+        json_reports(json.dumps(report(data={"arming_state": None})))

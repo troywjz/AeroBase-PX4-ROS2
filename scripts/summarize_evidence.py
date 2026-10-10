@@ -33,6 +33,7 @@ CHECK_NAMES = frozenset(
         "agent_restart_recovers",
         "remained_disarmed",
         "strict_json_stdout",
+        "subscriber_started_first",
     }
 )
 COMMIT_FIELDS = {
@@ -109,7 +110,7 @@ def _read_result(path: Path) -> dict[str, Any]:
                 raise SummaryInputError("invalid_result")
             checks[name] = value
 
-    if passed and (not (CHECK_NAMES - {"strict_json_stdout"}).issubset(checks) or not all(checks.values())):
+    if passed and (not (CHECK_NAMES - {"strict_json_stdout", "subscriber_started_first"}).issubset(checks) or not all(checks.values())):
         raise SummaryInputError("invalid_result")
 
     result: dict[str, Any] = {
@@ -243,6 +244,8 @@ def create_summary(result_path: Path, versions_path: Path | None = None) -> dict
                 raise SummaryInputError("incomplete_versions")
             if result["settings"].get("monitor_output") == "json" and not result["checks"].get("strict_json_stdout"):
                 raise SummaryInputError("missing_json_check")
+            if result["settings"].get("monitor_first") and not result["checks"].get("subscriber_started_first"):
+                raise SummaryInputError("missing_subscriber_check")
     except SummaryInputError:
         if result["passed"]:
             raise

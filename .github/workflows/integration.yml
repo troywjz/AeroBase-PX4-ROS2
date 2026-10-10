@@ -1,6 +1,11 @@
 name: Native Ubuntu SITL integration
 on:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - 'LICENSE'
   workflow_dispatch:
 permissions:
   contents: read

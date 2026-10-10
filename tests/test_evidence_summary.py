@@ -37,6 +37,7 @@ class EvidenceSummaryTests(unittest.TestCase):
                 "agent_restart_recovers": True,
                 "remained_disarmed": True,
                 "strict_json_stdout": True,
+                "subscriber_started_first": True,
                 "unexpected_check": "PRIVATE-CHECK-VALUE",
             },
             "started_utc": STARTED,
