@@ -29,4 +29,4 @@ If the package link resolves to a different checkout, the doctor preserves it an
 | Ubuntu 24.04 | ARM64 | Reported as not yet accepted; a successful file check must not be read as deployment acceptance. |
 | Other operating systems or Ubuntu releases | Any | Outside the current target matrix. |
 
-The recorded PX4 SITL integration result was produced on WSL2 Ubuntu 24.04.4 as described in the [setup guide](setup-ubuntu.md). Native runner acceptance remains pending confirmation from this release's deployment evidence. WSL2 results do not establish native Ubuntu acceptance, hardware operation, flight readiness, or safety certification. The doctor reports environment and runtime files only; it does not assess telemetry flow, vehicle health, hardware, or flight safety.
+Headless SITL integration passed on a fresh GitHub-hosted Ubuntu 24.04.5 amd64 runner and WSL2 Ubuntu 24.04.4; see the [release evidence](evidence/2026-10-10-v0.1.md). The doctor reports environment and runtime files only; the separate SITL verifier checks the live data path and reports startup failures. Neither result assesses physical hardware, flight readiness or flight safety.

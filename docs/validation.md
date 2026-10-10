@@ -29,4 +29,6 @@ python3 scripts/summarize_evidence.py INPUT/result.json --output OUTPUT
 
 摘要器只输出通过白名单校验的检查结果、UTC 时间、软件版本、固定源码提交和已知设置，不复制原始命令、错误文本、内核、主机绝对路径或设备/代理信息。公开前仍应复核摘要和周边材料。遥测节点的机器输出契约见[只读遥测 JSON 契约](telemetry-contract.md)。
 
-当前记录的 45 项自动化测试（含真实 PX4 ROS 消息类适配测试）通过；WSL2 SITL 的 schema v1 JSON 输出、Agent 断连 stale 状态和恢复检查通过。原生 runner 验收待本次发布证据确认，不能由 WSL2 或单元测试替代。既有 WSL2 版本和运行记录见[Phase 1 集成测试报告](evidence/2026-10-09-phase1.md)及[版本记录](evidence/2026-10-09-versions.json)。实体硬件、控制功能和 GUI 视觉验收未验证。
+原生 Ubuntu runner 与 WSL2 的 45 项自动化测试（含真实 PX4 ROS 消息类适配测试）通过。原生 CI 从新运行目录安装依赖、构建全部锁定源码，再验证 text、订阅先就绪的 schema v1 JSON、四条遥测及 Agent 断连恢复；只上传白名单摘要。结果见[发布验收记录](evidence/2026-10-10-v0.1.md)和[原生 CI](https://github.com/troywjz/AeroBase-PX4-ROS2/actions/runs/38060815092)。文档改动只运行核心检查；涉及源码、部署脚本、锁文件或测试的 PR 运行完整集成 CI，也可手动触发。
+
+既有 WSL2 版本和运行记录见[Phase 1 集成测试报告](evidence/2026-10-09-phase1.md)及[版本记录](evidence/2026-10-09-versions.json)。实体硬件、控制功能和 GUI 视觉验收未验证。

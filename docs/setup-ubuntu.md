@@ -4,7 +4,7 @@
 
 ## 环境基线
 
-推荐 Ubuntu 24.04、ROS 2 Jazzy、Gazebo Harmonic、PX4 v1.17.0 和 Micro XRCE-DDS Agent v2.4.3。已记录的完整集成验证运行于 WSL2 Ubuntu 24.04.4；该结果不代表所有原生 Ubuntu 或其他机器均已验收。不要混用 Ubuntu 22.04 / Humble / Agent v2.4.2 教程命令。
+v0.1.0 支持 Ubuntu 24.04 amd64、ROS 2 Jazzy、Gazebo Harmonic、PX4 v1.17.0 和 Micro XRCE-DDS Agent v2.4.3。全新 GitHub 托管 Ubuntu 24.04.5 runner 与 WSL2 Ubuntu 24.04.4 的 headless 链路均已通过[发布验收](evidence/2026-10-10-v0.1.md)。ARM 与 GUI 尚未验收。不要混用 Ubuntu 22.04 / Humble / Agent v2.4.2 教程命令。
 
 版本依据：[PX4 ROS 2 指南](https://docs.px4.io/main/en/ros2/user_guide)、[PX4 XRCE Agent 版本表](https://docs.px4.io/main/en/middleware/uxrce_dds#version-selection)、[PX4 v1.17.0](https://github.com/PX4/PX4-Autopilot/releases/tag/v1.17.0)、[该版本 Ubuntu 安装脚本](https://github.com/PX4/PX4-Autopilot/blob/v1.17.0/Tools/setup/ubuntu.sh)。
 

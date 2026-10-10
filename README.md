@@ -8,7 +8,7 @@ GitHub：[troywjz/AeroBase-PX4-ROS2](https://github.com/troywjz/AeroBase-PX4-ROS
 
 ## 快速部署
 
-部署脚本以 Ubuntu 24.04 为目标。当前记录的验证环境是运行于 WSL2 的 Ubuntu 24.04；这不代表已在原生 Ubuntu 安装或所有硬件配置上完成验证。以下命令在 Ubuntu Bash 中运行：
+v0.1.0 面向 Ubuntu 24.04 amd64。全新 GitHub 托管 Ubuntu 24.04 runner 与 WSL2 Ubuntu 24.04 的 headless 集成验收均已通过，具体条件见[发布验收记录](docs/evidence/2026-10-10-v0.1.md)。以下命令在 Ubuntu Bash 中运行：
 
 ```bash
 git clone https://github.com/troywjz/AeroBase-PX4-ROS2.git ~/AeroBase-PX4-ROS2
@@ -46,14 +46,14 @@ bash scripts/doctor.sh --strict
 
 | 组件 | 基线 |
 | --- | --- |
-| 操作系统目标 | Ubuntu 24.04；当前验证记录来自 WSL2 |
+| 操作系统目标 | Ubuntu 24.04 amd64；原生 runner 与 WSL2 已验证 |
 | 飞控栈 | PX4 v1.17.0 |
 | ROS 2 | Jazzy、`rclpy`、Cyclone DDS RMW (`rmw_cyclonedds_cpp`) |
 | 模拟器 | Gazebo Harmonic，X500 模型 |
 | XRCE Agent | Micro XRCE-DDS Agent v2.4.3 |
 | PX4 消息定义 | `px4_msgs` `release/1.17` 固定提交 |
 
-源码版本记录在 [stack.lock.json](config/stack.lock.json)。系统软件包来自 Ubuntu、ROS 和 Gazebo 软件仓库，实际安装版本见[验证证据](docs/evidence/2026-10-09-phase1.md)。源码修订已固定；发行版软件包来自对应仓库，可能随仓库更新。
+源码版本记录在 [stack.lock.json](config/stack.lock.json)。系统软件包来自 Ubuntu、ROS 和 Gazebo 软件仓库，实际安装版本见[发布验证证据](docs/evidence/2026-10-10-v0.1.md)。源码修订已固定；发行版软件包来自对应仓库，可能随仓库更新。
 
 ## 当前功能
 
@@ -97,7 +97,7 @@ bash scripts/run_monitor.sh --ros-args -p stale_timeout_s:=5.0
 bash scripts/verify_sitl.sh --monitor-first --output "$PWD/.runtime/evidence/run"
 ```
 
-脚本启动 PX4 SITL、Gazebo X500、XRCE Agent 和监测节点，检查必选及可选遥测、过期与恢复行为、只读边界，随后关闭本次启动的进程。原始日志放在 Git 忽略的 `.runtime/evidence/` 目录。公开的[验证记录](docs/evidence/2026-10-09-phase1.md)包含两次独立 WSL2 运行、软件版本、观测结果和范围限制。单元测试与 SITL 证据各自有适用范围，均不能证明实体飞行表现或硬件验收。
+脚本启动 PX4 SITL、Gazebo X500、XRCE Agent 和监测节点，检查必选及可选遥测、过期与恢复行为、只读边界，随后关闭本次启动的进程。添加 `--monitor-output json` 可验证机器输出。原始日志放在 Git 忽略的 `.runtime/evidence/` 目录；公开的[发布验收记录](docs/evidence/2026-10-10-v0.1.md)包含原生 runner、WSL2、软件版本和范围限制。单元测试与 SITL 证据各自有适用范围，均不能证明实体飞行表现或硬件验收。
 
 ## 架构与路线图
 
