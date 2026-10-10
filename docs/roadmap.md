@@ -2,23 +2,26 @@
 
 ## 当前基线
 
-AeroBase 当前 PX4 + ROS 2 基线使用 [stack.lock.json](../config/stack.lock.json) 中固定的软件源码组合，建立从 PX4 SITL 到 ROS 2 的遥测链路。当前节点只读，终端报告所选遥测字段及其新鲜度。
+AeroBase 当前 PX4 + ROS 2 基线使用 [stack.lock.json](../config/stack.lock.json) 中固定的软件源码组合，建立从 PX4 SITL 到 ROS 2 的遥测链路。当前节点只读，默认提供兼容的 text 报告，也可输出 [schema v1 JSON](telemetry-contract.md) 供机器读取。
 
 | 功能 | 当前状态 | 证据或范围 |
 | --- | --- | --- |
 | Ubuntu 24.04 依赖安装与运行环境构建脚本 | 已实现 | 脚本目标为 Ubuntu 24.04；源码修订固定，发行版系统包版本单独记录 |
+| 环境与运行目录诊断 | 已实现 | `scripts/doctor.sh` 只读检查；严格模式要求当前 shell 已 source ROS Jazzy 与构建后的 workspace |
+| 固定源码获取与运行目录保护 | 已实现 | 获取器核对锁定提交并保留已有源码和不匹配的包链接；详见部署指南 |
 | PX4 SITL + Gazebo Harmonic X500 | 已在指定 WSL2 Ubuntu 24.04 环境通过验证 | 记录了 headless 模型和启动检查；该证据未覆盖原生 Ubuntu 或所有硬件配置 |
 | PX4 uXRCE-DDS 到 ROS 2 | 已实现并在指定 WSL2 SITL 环境验证 | XRCE Agent Fast DDS 与 ROS Cyclone DDS RMW；两次独立运行通过 |
 | 状态与里程计必选订阅 | 已实现并在指定 WSL2 SITL 环境验证 | 两路消息均到达 `vehicle_monitor` |
 | 电池与全局位置可选订阅 | 已实现并在指定 WSL2 SITL 环境收到数据 | 仿真中无效的电池电流显示为 unknown |
 | 新鲜度、断连与恢复状态 | 已实现并验证 | Agent 停止后的过期与重启恢复通过；单流故障由单元测试覆盖，未做独立 SITL 注入 |
 | 只读边界 | 已实现并检查 | 无 PX4 命令发布器或命令服务客户端；记录运行期间 PX4 始终未解锁 |
+| 机器可读遥测 | 已实现 | `output_format:=json` 输出 schema v1；缺失或 stale 流不提供数值数据 |
 | Gazebo GUI 视觉验收 | 未完成 | 已记录的 SITL 运行均为 headless |
 | 实体飞控或传感器验收 | 未完成 | 尚无硬件测试证据 |
 | 飞行控制、Offboard、参数写入、执行器输出 | 未实现 | 不属于当前工程范围 |
 | ArduPilot、MAVLink 或其他后端适配器 | 未实现 | 架构保留适配接口，尚无第二种后端实现 |
 
-[验证记录](evidence/2026-10-09-phase1.md)列出运行时间、命令、版本、日志、失败情况和证据范围。指定 WSL2 验证环境中 14 项 Python 测试及脚本检查通过。首个公开提交的 [GitHub Actions 检查](https://github.com/troywjz/AeroBase-PX4-ROS2/actions/workflows/checks.yml)也已通过，包含 11 项通过、1 项因缺少 ROS 依赖而跳过；CI 检查覆盖核心逻辑与脚本，不能替代完整的 14 项环境相关测试或 SITL 验收。
+[验证记录](evidence/2026-10-09-phase1.md)列出既有 WSL2 测试运行时间、命令、版本和范围。当前 45 项自动化测试（含真实 PX4 ROS 消息类适配测试）通过，WSL2 的 schema v1 JSON SITL 断连恢复检查通过。原生 runner 验收待本次发布证据确认；该项通过前不宣称原生 Ubuntu 部署验收。
 
 ## 后续验证与工程扩展
 

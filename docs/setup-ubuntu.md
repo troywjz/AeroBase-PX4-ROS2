@@ -51,6 +51,16 @@ AEROBASE_BUILD_JOBS=2 bash scripts/build_runtime.sh
 
 PX4 Python 依赖位于独立的 `px4-venv`；ROS 2 使用 Ubuntu 系统 Python。运行 ROS 2 命令时不要激活 PX4 虚拟环境。
 
+构建后，在准备运行 ROS 2 命令的同一个终端先加载 Jazzy 和工作区，再运行严格环境诊断：
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/aerobase-runtime/ros2_ws/install/setup.bash
+bash scripts/doctor.sh --strict
+```
+
+若使用 `AEROBASE_RUNTIME` 指定其他运行目录，应 source 该目录中的 `ros2_ws/install/setup.bash`。JSON 诊断可用 `bash scripts/doctor.sh --json`；完整行为和状态含义见[运行环境诊断](runtime-diagnostics.md)。
+
 ## 启动仿真和监测节点
 
 分别在三个 Ubuntu 终端中进入仓库目录，并按以下顺序启动：
@@ -69,6 +79,14 @@ HEADLESS=1 bash scripts/run_sitl.sh
 # 终端 C：ROS 2 遥测监测节点
 bash scripts/run_monitor.sh
 ```
+
+默认输出为兼容的 text。需要机器读取时，启动参数可选择 schema v1 JSON：
+
+```bash
+bash scripts/run_monitor.sh --ros-args -p output_format:=json
+```
+
+JSON 每行一个报告，字段、单位、缺失与 stale 语义见[只读遥测 JSON 契约](telemetry-contract.md)。
 
 `HEADLESS=1` 关闭 Gazebo 图形界面，仿真仍运行。需要图形界面时去掉该变量；WSL 环境还需 WSLg 图形支持。界面显示不属于当前已记录的视觉验收范围。
 

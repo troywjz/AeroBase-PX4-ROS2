@@ -21,4 +21,12 @@
 
 自动集成检查生成 SITL、Agent、monitor 日志，ROS Topic/Node 图、Gazebo 模型列表、`versions.json` 和 `result.json`。原始结果保存在本地忽略目录 `.runtime/evidence/`，可公开摘要保存在 `docs/evidence/`。记录使用实际执行日期和明确时区，失败、中断或超时均保留其真实结果。
 
-CI 当前只检查 Python 核心逻辑与脚本语法，不运行完整 SITL。2026-10-09 的固定配置测试报告见[Phase 1 集成测试报告](evidence/2026-10-09-phase1.md)，版本明细见[版本记录](evidence/2026-10-09-versions.json)。报告中的结论限于所列 WSL2 环境与配置；实体硬件、控制功能和 GUI 视觉验收未验证。
+生成脱敏的公开 JSON 摘要时，从仓库根目录将输入运行目录和输出文件替换为实际路径：
+
+```bash
+python3 scripts/summarize_evidence.py INPUT/result.json --output OUTPUT
+```
+
+摘要器只输出通过白名单校验的检查结果、UTC 时间、软件版本、固定源码提交和已知设置，不复制原始命令、错误文本、内核、主机绝对路径或设备/代理信息。公开前仍应复核摘要和周边材料。遥测节点的机器输出契约见[只读遥测 JSON 契约](telemetry-contract.md)。
+
+当前记录的 45 项自动化测试（含真实 PX4 ROS 消息类适配测试）通过；WSL2 SITL 的 schema v1 JSON 输出、Agent 断连 stale 状态和恢复检查通过。原生 runner 验收待本次发布证据确认，不能由 WSL2 或单元测试替代。既有 WSL2 版本和运行记录见[Phase 1 集成测试报告](evidence/2026-10-09-phase1.md)及[版本记录](evidence/2026-10-09-versions.json)。实体硬件、控制功能和 GUI 视觉验收未验证。
